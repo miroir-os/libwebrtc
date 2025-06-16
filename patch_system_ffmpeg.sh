@@ -266,15 +266,53 @@ if (use_system_ffmpeg) {
         "/usr/lib",
       ]
     }
+  } else if (is_mac) {
+    config("system_ffmpeg") {
+      # macOS system FFmpeg paths
+      # Homebrew on Apple Silicon: /opt/homebrew
+      # Homebrew on Intel: /usr/local
+      # MacPorts: /opt/local
+      if (target_cpu == "arm64") {
+        # Apple Silicon paths
+        cflags = [
+          "-isystem/opt/homebrew/include",
+          "-isystem/usr/local/include",
+          "-isystem/opt/local/include",
+        ]
+        lib_dirs = [
+          "/opt/homebrew/lib",
+          "/usr/local/lib",
+          "/opt/local/lib",
+        ]
+      } else {
+        # Intel Mac paths
+        cflags = [
+          "-isystem/usr/local/include",
+          "-isystem/opt/homebrew/include",
+          "-isystem/opt/local/include",
+        ]
+        lib_dirs = [
+          "/usr/local/lib",
+          "/opt/homebrew/lib",
+          "/opt/local/lib",
+        ]
+      }
+      
+      libs = [
+        "avcodec",
+        "avformat",
+        "avutil",
+      ]
+    }
   }
 
   # Simple group target for system FFmpeg
   group("ffmpeg_internal") {
-    if (is_linux) {
+    if (is_linux || is_mac) {
       public_configs = [ ":system_ffmpeg" ]
     } else {
-      # Fallback to error for non-Linux platforms
-      assert(false, "System FFmpeg only supported on Linux")
+      # Fallback to error for non-Linux/macOS platforms
+      assert(false, "System FFmpeg only supported on Linux and macOS")
     }
   }
 
@@ -568,6 +606,22 @@ if [ -f build_linux.sh ]; then
     sed -i '/rtc_use_ffmpeg_h264_encoder=true \\/d' build_linux.sh
 fi
 
+# macOS Build Script
+if [ -f build_macos.sh ]; then
+    echo "Patching build_macos.sh..."
+    # Add use_system_ffmpeg=true after rtc_use_h264=true
+    if ! grep -q "use_system_ffmpeg=true" build_macos.sh; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS sed syntax
+            sed -i '' '/rtc_use_h264=true \\/a\
+  use_system_ffmpeg=true \\' build_macos.sh
+        else
+            # Linux sed syntax (when running patch on Linux for macOS build)
+            sed -i '/rtc_use_h264=true \\/a\  use_system_ffmpeg=true \\' build_macos.sh
+        fi
+    fi
+fi
+
 # 5. Update H264 Decoder Implementation
 echo "Patching H264 decoder implementation..."
 H264_DECODER="src/modules/video_coding/codecs/h264/h264_decoder_impl.cc"
@@ -652,14 +706,19 @@ echo "Patching complete!"
 echo ""
 echo "Next steps:"
 echo "1. Ensure system FFmpeg is installed:"
-echo "   Ubuntu/Debian: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev"
-echo "   Fedora/RHEL: sudo dnf install ffmpeg-devel"
+echo "   Linux:"
+echo "     Ubuntu/Debian: sudo apt-get install libavcodec-dev libavformat-dev libavutil-dev"
+echo "     Fedora/RHEL: sudo dnf install ffmpeg-devel"
+echo "   macOS:"
+echo "     Homebrew: brew install ffmpeg"
+echo "     MacPorts: sudo port install ffmpeg-devel"
 echo ""
 echo "2. Clean any previous builds:"
 echo "   rm -rf src/out*"
 echo ""
 echo "3. Run the build:"
-echo "   ./build_linux.sh --arch x64 --profile release"
+echo "   Linux: ./build_linux.sh --arch x64 --profile release"
+echo "   macOS: ./build_macos.sh --arch arm64 --profile release"
 echo ""
-echo "Note: This patch is primarily for Linux x64. Other architectures may need path adjustments."
-echo "      The hardcoded paths assume standard system locations for FFmpeg libraries."
+echo "Note: The hardcoded paths assume standard system locations for FFmpeg libraries."
+echo "      You may need to adjust paths if FFmpeg is installed elsewhere."
