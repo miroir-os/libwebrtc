@@ -69,7 +69,8 @@ if [ "$platform" = "linux" ]; then
   # Add the call to the patch after source code is setup and before building
   if ! grep -qF "$patch_script" "$libwebrtc_dir/$linux_script"; then
     sed -i '/^# build static library$/i \
-"$COMMAND_DIR/'"$patch_script"'"' "$libwebrtc_dir/$linux_script"
+"$COMMAND_DIR/'"$patch_script"'" --platform linux || exit 1\
+' "$libwebrtc_dir/$linux_script"
   fi
 fi
 
@@ -81,8 +82,9 @@ if [ "$platform" = "macos" ]; then
   sed -i '' '/ffmpeg_branding=/d' "$libwebrtc_dir/$macos_script" 
   # Add the call to the patch after source code is setup and before building
   if ! grep -qF "$patch_script" "$libwebrtc_dir/$macos_script"; then
-    sed -i '' '/^# build static library$/i \
-"$COMMAND_DIR/'"$patch_script"'"' "$libwebrtc_dir/$macos_script"
+    sed -i '' '/^# build static library$/i\
+"$COMMAND_DIR/'"$patch_script"'" --platform macos || exit 1\
+' "$libwebrtc_dir/$macos_script"
   fi
 fi
 
@@ -92,12 +94,12 @@ cd "$libwebrtc_dir" || exit 1
 
 case "$platform" in
   linux)
-    "./$linux_script" --arch "$arch" --profile "$profile"
+    "./$linux_script" --arch "$arch" --profile "$profile" || exit 1
     echo -e "\nBuild completed successfully:"
     echo "$libwebrtc_dir/linux-$arch-$profile/"
     ;;
   macos)
-    "./$macos_script" --arch "$arch" --profile "$profile"
+    "./$macos_script" --arch "$arch" --profile "$profile" || exit 1
     echo -e "\nBuild completed successfully:"
     echo "$libwebrtc_dir/mac-$arch-$profile/"
     ;;

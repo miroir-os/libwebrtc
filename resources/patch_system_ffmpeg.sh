@@ -8,6 +8,31 @@ set -e
 
 echo "Patching WebRTC to use system FFmpeg..."
 
+# 1. Get the arguments
+platform=""
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --platform)
+      platform="$2"
+      if [ "$platform" != "linux" ] && [ "$platform" != "macos" ]; then
+        echo "Error: Invalid value for --platform. Must be 'linux' or 'macos'."
+        exit 1
+      fi
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown argument '$1'"
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$platform" ]; then
+  echo "Error: --platform must be set."
+  exit 1
+fi
+
 # 1. Replace the entire BUILD.gn file with system FFmpeg version
 echo "Replacing src/third_party/ffmpeg/BUILD.gn..."
 cp src/third_party/ffmpeg/BUILD.gn src/third_party/ffmpeg/BUILD.gn.backup 2>/dev/null || true
@@ -126,15 +151,22 @@ EOF
 # 2. Update H264 Decoder Implementation to use system FFmpeg headers
 echo "Patching H264 decoder implementation..."
 H264_DECODER="src/modules/video_coding/codecs/h264/h264_decoder_impl.cc"
+
+if [[ "$platform" == "macos" ]]; then
+    SED_INPLACE=(sed -i '')
+else
+    SED_INPLACE=(sed -i)
+fi
+
 if [ -f "$H264_DECODER" ]; then
     # Create a backup
     cp "$H264_DECODER" "$H264_DECODER.backup" 2>/dev/null || true
     
     # Replace bundled FFmpeg headers with system headers
-    sed -i 's|#include "third_party/ffmpeg/libavcodec/avcodec.h"|#include <libavcodec/avcodec.h>|' "$H264_DECODER"
-    sed -i 's|#include "third_party/ffmpeg/libavformat/avformat.h"|#include <libavformat/avformat.h>|' "$H264_DECODER"
-    sed -i 's|#include "third_party/ffmpeg/libavutil/imgutils.h"|#include <libavutil/imgutils.h>|' "$H264_DECODER"
-    sed -i 's|#include "third_party/ffmpeg/libavutil/log.h"|#include <libavutil/log.h>|' "$H264_DECODER"
+    "${SED_INPLACE[@]}" 's|#include "third_party/ffmpeg/libavcodec/avcodec.h"|#include <libavcodec/avcodec.h>|' "$H264_DECODER"
+    "${SED_INPLACE[@]}" 's|#include "third_party/ffmpeg/libavformat/avformat.h"|#include <libavformat/avformat.h>|' "$H264_DECODER"
+    "${SED_INPLACE[@]}" 's|#include "third_party/ffmpeg/libavutil/imgutils.h"|#include <libavutil/imgutils.h>|' "$H264_DECODER"
+    "${SED_INPLACE[@]}" 's|#include "third_party/ffmpeg/libavutil/log.h"|#include <libavutil/log.h>|' "$H264_DECODER"
 fi
 
 echo "Patching complete!"
