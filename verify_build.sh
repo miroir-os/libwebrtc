@@ -3,7 +3,7 @@
 # Script to verify that the system FFmpeg patch was applied correctly
 # This checks the simplified patch that always uses system FFmpeg
 
-libwebrtc_dir="libwebrtc"
+libwebrtc_dir="rust-sdks/webrtc-sys/libwebrtc"
 cd "$libwebrtc_dir" || exit 1
 
 echo "Verifying system FFmpeg patch..."

@@ -1,8 +1,10 @@
 #!/bin/bash
 
-libwebrtc_dir="libwebrtc"
+libwebrtc_dir="rust-sdks/webrtc-sys/libwebrtc"
 linux_script="build_linux.sh"
 macos_script="build_macos.sh"
+
+resources_dir="resources"
 patch_script="patch_system_ffmpeg.sh"
 
 # 1. Get the arch, profile and platform arguments
@@ -55,7 +57,7 @@ fi
 
 # 2. Modify Build Scripts
 if [ ! -f "$libwebrtc_dir/$patch_script" ]; then
-  cp "$patch_script" "$libwebrtc_dir/$patch_script"
+  cp "$resources_dir/$patch_script" "$libwebrtc_dir/$patch_script" || exit 1
 fi
 
 if [ "$platform" = "linux" ]; then
@@ -85,7 +87,7 @@ if [ "$platform" = "macos" ]; then
 fi
 
 # 3. Run the build script
-echo "Starting build...\n"
+echo -e "Starting build...\n"
 cd "$libwebrtc_dir" || exit 1
 
 case "$platform" in
@@ -100,3 +102,6 @@ case "$platform" in
     exit 1
     ;;
 esac
+
+echo -e "\nBuild completed successfully:"
+echo "$libwebrtc_dir/$platform-$arch-$profile/"

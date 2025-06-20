@@ -1,6 +1,6 @@
 # Libwebrtc patch
 This patches and build the [libwebrtc](https://github.com/livekit/rust-sdks/tree/main/webrtc-sys/libwebrtc) for Livekit.
-It remove the statically linked FFmpeg and use the host one at runtime instead.
+It removes the statically linked FFmpeg and use the host one at runtime instead.
 
 ## Prerequisites
 - Linux: libavcodec-dev libavformat-dev libavutil-dev
@@ -20,12 +20,8 @@ This patch is meant to be run from the same platform you are building for.
 ## Details
 `build.sh`
 - Patches the build scripts to remove old ffmpeg arguments
-- Add a call to the patch_system_ffmpeg.sh script to be run during build (it needs to run after the source code is downloaded and before the build actually starts)
+- Add a call to the patch_system_ffmpeg.sh script to be run during build
 
 `verify_build.sh`
-- Allows to check after a build if the patch was correclty applied to the source code and that the resulting library does not contain FFmpeg anymore
-
-`patch_system_ffmpeg.sh`
-- It is not meant to be run directly !
-- Modifies msrc/third_party/ffmpeg/BUILD.gn (replaced with system FFmpeg config)
-- Modifies the H264 decoder (uses system headers)
+- Check after a build if the patch was correclty applied to the source code
+- Verifies that the resulting library does not contain FFmpeg anymore
