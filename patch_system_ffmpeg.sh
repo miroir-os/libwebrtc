@@ -2,6 +2,7 @@
 
 # Script to patch WebRTC to use system FFmpeg instead of bundled FFmpeg
 # This permanently replaces bundled FFmpeg with system FFmpeg
+# It is meant to be run after the sources are downloaded and before building
 
 set -e
 
@@ -122,26 +123,7 @@ static_library("ffmpeg_nasm") {
 }
 EOF
 
-# 2. Modify Build Scripts
-echo "Patching build scripts..."
-
-# Linux Build Script
-if [ -f build_linux.sh ]; then
-    echo "Patching build_linux.sh..."
-    # Remove ffmpeg_branding line
-    sed -i '/ffmpeg_branding=\\"Chrome\\" \\/d' build_linux.sh
-    # Remove rtc_use_ffmpeg_h264_encoder line if it exists
-    sed -i '/rtc_use_ffmpeg_h264_encoder=true \\/d' build_linux.sh
-fi
-
-# macOS Build Script  
-if [ -f build_macos.sh ]; then
-    echo "Patching build_macos.sh..."
-    # Remove ffmpeg_branding line if it exists
-    sed -i '/ffmpeg_branding=/d' build_macos.sh
-fi
-
-# 3. Update H264 Decoder Implementation to use system FFmpeg headers
+# 2. Update H264 Decoder Implementation to use system FFmpeg headers
 echo "Patching H264 decoder implementation..."
 H264_DECODER="src/modules/video_coding/codecs/h264/h264_decoder_impl.cc"
 if [ -f "$H264_DECODER" ]; then
@@ -156,14 +138,3 @@ if [ -f "$H264_DECODER" ]; then
 fi
 
 echo "Patching complete!"
-echo ""
-echo "System FFmpeg will now be used instead of bundled FFmpeg."
-echo ""
-echo "Prerequisites:"
-echo "- Linux: libavcodec-dev libavformat-dev libavutil-dev"
-echo "- macOS: FFmpeg from Homebrew or MacPorts"
-echo ""
-echo "The patch modifies:"
-echo "- src/third_party/ffmpeg/BUILD.gn (replaced with system FFmpeg config)"
-echo "- build scripts (removed ffmpeg_branding lines)"
-echo "- H264 decoder (uses system headers)"

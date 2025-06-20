@@ -3,6 +3,9 @@
 # Script to verify that the system FFmpeg patch was applied correctly
 # This checks the simplified patch that always uses system FFmpeg
 
+libwebrtc_dir="libwebrtc"
+cd "$libwebrtc_dir" || exit 1
+
 echo "Verifying system FFmpeg patch..."
 echo ""
 

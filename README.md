@@ -1,28 +1,31 @@
-This directory can contain a checkout of WebRTC. The build scripts
-here will install dependencies, checkout the version that LiveKit
-currently uses, apply some patches to it, and build it. For example to
-do a Linux debug build on x64:
+# Libwebrtc patch
+This patches and build the [libwebrtc](https://github.com/livekit/rust-sdks/tree/main/webrtc-sys/libwebrtc) for Livekit.
+It remove the statically linked FFmpeg and use the host one at runtime instead.
+
+## Prerequisites
+- Linux: libavcodec-dev libavformat-dev libavutil-dev
+- MacOS: FFmpeg from Homebrew or MacPorts
+
+## Usage
+This patch is meant to be run from the same platform you are building for.
 
 ```sh
-$ ./build-linux.sh --arch x64 --profile release
+# Linux
+./build.sh --platform linux --arch x64 --profile release
+
+# MacOS
+./build.sh --platform macos --arch arm64 --profile release
 ```
 
-After running this, `linux-x64-debug/lib/libwebrtc.a` should
-exist. This can be rerun to rebuild it, but will complain about
-patches not applying as they have already been applied.
+## Details
+`build.sh`
+- Patches the build scripts to remove old ffmpeg arguments
+- Add a call to the patch_system_ffmpeg.sh script to be run during build (it needs to run after the source code is downloaded and before the build actually starts)
 
-If something goes wrong it may be helpful to consult the [WebRTC native
-development documentation](https://webrtc.googlesource.com/src/+/main/docs/native-code/development/).
+`verify_build.sh`
+- Allows to check after a build if the patch was correclty applied to the source code and that the resulting library does not contain FFmpeg anymore
 
-# Building LiveKit Rust SDK with custom WebRTC checkout
-
-Add the following environment variable to `/.config/config.toml`, to
-specify use of a custom WebRTC build:
-
-```toml
-[env]
-LK_CUSTOM_WEBRTC = { value = "webrtc-sys/libwebrtc/linux-x64-release", relative = true }
-```
-
-Note that `linux-x64-debug` should be replaced with the artifact
-directory appropriate for your configuration.
+`patch_system_ffmpeg.sh`
+- It is not meant to be run directly !
+- Modifies msrc/third_party/ffmpeg/BUILD.gn (replaced with system FFmpeg config)
+- Modifies the H264 decoder (uses system headers)
