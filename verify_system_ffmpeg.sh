@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Script to verify that the system FFmpeg patch was applied correctly
+# This checks the simplified patch that always uses system FFmpeg
 
 echo "Verifying system FFmpeg patch..."
 echo ""
@@ -52,12 +53,15 @@ fi
 echo ""
 
 # Check if patch was applied to BUILD.gn
-echo "2. Checking if BUILD.gn was patched:"
+echo "2. Checking if BUILD.gn was replaced:"
 if [ -f "src/third_party/ffmpeg/BUILD.gn" ]; then
-    if grep -q "use_system_ffmpeg" "src/third_party/ffmpeg/BUILD.gn"; then
-        echo "   ✓ BUILD.gn contains system FFmpeg configuration"
+    # Check for key indicators of the system FFmpeg BUILD.gn
+    if grep -q "config(\"system_ffmpeg\")" "src/third_party/ffmpeg/BUILD.gn" && \
+       grep -q "libs = \[" "src/third_party/ffmpeg/BUILD.gn" && \
+       grep -q "\"avcodec\"," "src/third_party/ffmpeg/BUILD.gn"; then
+        echo "   ✓ BUILD.gn has been replaced with system FFmpeg configuration"
     else
-        echo "   ✗ BUILD.gn missing system FFmpeg configuration"
+        echo "   ✗ BUILD.gn does not contain system FFmpeg configuration"
     fi
 else
     echo "   ✗ BUILD.gn file not found"
@@ -65,15 +69,24 @@ fi
 echo ""
 
 # Check if build script was modified
-echo "3. Checking if build script was modified:"
+echo "3. Checking if build scripts were modified:"
 if [ -f "build_linux.sh" ]; then
-    if grep -q "use_system_ffmpeg=true" "build_linux.sh"; then
-        echo "   ✓ build_linux.sh contains use_system_ffmpeg=true"
+    if ! grep -q "ffmpeg_branding=\\"Chrome\\"" "build_linux.sh"; then
+        echo "   ✓ build_linux.sh: ffmpeg_branding line removed"
     else
-        echo "   ✗ build_linux.sh missing use_system_ffmpeg=true"
+        echo "   ✗ build_linux.sh: still contains ffmpeg_branding"
     fi
 else
-    echo "   ✗ build_linux.sh not found"
+    echo "   - build_linux.sh not found"
+fi
+if [ -f "build_macos.sh" ]; then
+    if ! grep -q "ffmpeg_branding=" "build_macos.sh"; then
+        echo "   ✓ build_macos.sh: ffmpeg_branding line removed"
+    else
+        echo "   ✗ build_macos.sh: still contains ffmpeg_branding"
+    fi
+else
+    echo "   - build_macos.sh not found"
 fi
 echo ""
 
@@ -81,32 +94,21 @@ echo ""
 echo "4. Checking if H264 decoder was patched:"
 H264_DECODER="src/modules/video_coding/codecs/h264/h264_decoder_impl.cc"
 if [ -f "$H264_DECODER" ]; then
-    if grep -q "USE_SYSTEM_FFMPEG" "$H264_DECODER"; then
-        echo "   ✓ H264 decoder contains system FFmpeg includes"
+    # Check if using system headers (angle brackets)
+    if grep -q "#include <libavcodec/avcodec.h>" "$H264_DECODER"; then
+        echo "   ✓ H264 decoder uses system FFmpeg headers"
+    elif grep -q "#include \"third_party/ffmpeg/libavcodec/avcodec.h\"" "$H264_DECODER"; then
+        echo "   ✗ H264 decoder still uses bundled FFmpeg headers"
     else
-        echo "   ✗ H264 decoder missing system FFmpeg includes"
+        echo "   ? H264 decoder has unexpected include format"
     fi
 else
     echo "   ✗ H264 decoder file not found"
 fi
 echo ""
 
-# Check if video coding BUILD.gn was patched
-echo "5. Checking if video coding BUILD.gn was patched:"
-VIDEO_CODING_BUILD="src/modules/video_coding/BUILD.gn"
-if [ -f "$VIDEO_CODING_BUILD" ]; then
-    if grep -q "USE_SYSTEM_FFMPEG" "$VIDEO_CODING_BUILD"; then
-        echo "   ✓ Video coding BUILD.gn contains USE_SYSTEM_FFMPEG define"
-    else
-        echo "   ✗ Video coding BUILD.gn missing USE_SYSTEM_FFMPEG define"
-    fi
-else
-    echo "   ✗ Video coding BUILD.gn not found"
-fi
-echo ""
-
 # Check if the built library exists and uses system FFmpeg
-echo "6. Checking built library:"
+echo "5. Checking built library:"
 BUILD_DIR_FOUND=false
 for dir in linux-*-* mac-*-*; do
     if [ -d "$dir" ]; then

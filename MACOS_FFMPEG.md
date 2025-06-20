@@ -13,7 +13,6 @@ Added macOS-specific configuration to handle different FFmpeg installation locat
 The configuration automatically includes all common paths to ensure FFmpeg is found regardless of installation method.
 
 ### 2. Build Script Updates
-- Modified `build_macos.sh` to include `use_system_ffmpeg=true` flag
 - Updated `patch_system_ffmpeg.sh` to handle macOS sed syntax differences
 
 ### 3. Verification Script

@@ -120,7 +120,6 @@ Replace the FFmpeg-related build arguments (around line 103-105):
 # rtc_use_ffmpeg_h264_encoder=true \\
 
 # Replace with:
-use_system_ffmpeg=true \\
 rtc_use_h264=true \\
 ```
 
@@ -314,6 +313,5 @@ ffmpeg -codecs | grep h264
 
 To revert back to bundled FFmpeg:
 1. Restore original BUILD.gn files
-2. Remove `use_system_ffmpeg=true` from build scripts
-3. Restore original ffmpeg_branding settings
-4. Clean and rebuild
+2. Restore original ffmpeg_branding settings
+3. Clean and rebuild

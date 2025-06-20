@@ -104,7 +104,6 @@ gn gen "$OUTPUT_DIR" --root="src" \
   rtc_enable_objc_symbol_export=false \
   rtc_include_dav1d_in_internal_decoder_factory = true \
   rtc_use_h264=true \
-  use_system_ffmpeg=true \
   use_custom_libcxx=false \
   clang_use_chrome_plugins=false \
   use_rtti=true \
