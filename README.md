@@ -40,3 +40,6 @@ To use the built library in [one-click-os](https://github.com/one-click-studio/o
 `verify_build.sh`
 - Check after a build if the patch was correclty applied to the source code
 - Verifies that the resulting library does not contain FFmpeg anymore
+
+## TODO
+- `verify_build.sh` is AI generated and not really tested
