@@ -7,6 +7,7 @@ It removes the statically linked FFmpeg and use the host one at runtime instead.
 - MacOS: FFmpeg from Homebrew or MacPorts
 
 ## Usage
+### Build
 This patch is meant to be run from the same platform you are building for.
 
 ```sh
@@ -16,6 +17,13 @@ This patch is meant to be run from the same platform you are building for.
 # MacOS
 ./build.sh --platform macos --arch arm64 --profile release
 ```
+
+### Release
+To use the built library in [one-click-os](https://github.com/one-click-studio/one-click-os):
+- Zip the output folder  
+  Ex: on Linux the whole `rust-sdks/webrtc-sys/libwebrtc/linux-x64-release/` folder
+- Host this update version on a public URL (ex: Backblaze)
+- If changed, update the URL in `one-click-os/crates/meeting/build.rs`
 
 ## Details
 `build.sh`
