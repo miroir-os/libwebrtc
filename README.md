@@ -10,6 +10,13 @@ It removes the statically linked FFmpeg and use the host one at runtime instead.
 ### Build
 This patch is meant to be run from the same platform you are building for.
 
+Make sure you cloned this repository with `--recurse-submodules`, or synchronize with:
+```sh
+git submodule init
+git submodule update --recursive
+```
+
+Then build:
 ```sh
 # Linux
 ./build.sh --platform linux --arch x64 --profile release
