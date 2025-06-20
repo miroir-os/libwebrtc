@@ -93,9 +93,13 @@ cd "$libwebrtc_dir" || exit 1
 case "$platform" in
   linux)
     "./$linux_script" --arch "$arch" --profile "$profile"
+    echo -e "\nBuild completed successfully:"
+    echo "$libwebrtc_dir/linux-$arch-$profile/"
     ;;
   macos)
     "./$macos_script" --arch "$arch" --profile "$profile"
+    echo -e "\nBuild completed successfully:"
+    echo "$libwebrtc_dir/mac-$arch-$profile/"
     ;;
   *)
     echo "Error: Unknown platform '$platform'. Must be 'linux' or 'macos'."
@@ -103,5 +107,4 @@ case "$platform" in
     ;;
 esac
 
-echo -e "\nBuild completed successfully:"
-echo "$libwebrtc_dir/$platform-$arch-$profile/"
+
