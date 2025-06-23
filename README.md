@@ -28,7 +28,8 @@ Then build:
 ### Release
 To use the built library in [one-click-os](https://github.com/one-click-studio/one-click-os):
 - Zip the output folder  
-  Ex: on Linux the whole `rust-sdks/webrtc-sys/libwebrtc/linux-x64-release/` folder
+  Ex: on Linux the whole `rust-sdks/webrtc-sys/libwebrtc/linux-x64-release/` folder  
+  (on MacOS get rid of the *__MACOSX* subfolder it creates in the zip)
 - Host this update version on a public URL (ex: Backblaze)
 - If changed, update the URL in `one-click-os/crates/meeting/build.rs`
 
