@@ -21,7 +21,7 @@ jobs:
             script: build_linux.sh
           - platform: mac
             arch: x64
-            runner: macos-13
+            runner: macos-latest
             script: build_macos.sh
           - platform: mac
             arch: arm64

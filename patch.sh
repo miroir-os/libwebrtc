@@ -18,24 +18,34 @@ if [ ! -f "$build_script" ]; then
   exit 1
 fi
 
+# macOS sed requires -i '' while GNU sed requires -i
+sedi() {
+  if [[ "$OSTYPE" == darwin* ]]; then
+    sed -i '' "$@"
+  else
+    sed -i "$@"
+  fi
+}
+
 patch_common() {
   local f="$1"
   # Exclude protobuf .o files from the ar step — despite rtc_enable_protobuf=false,
   # protobuf-lite objects still get compiled as transitive deps (perfetto/trace).
-  sed -i 's|-not -path "\*/third_party/nasm/\*"|-not -path "*/third_party/nasm/*" -not -path "*/third_party/protobuf/*"|' "$f"
+  sedi 's|-not -path "\*/third_party/nasm/\*"|-not -path "*/third_party/nasm/*" -not -path "*/third_party/protobuf/*"|' "$f"
 }
 
 patch_linux() {
   local f="$1"
-  sed -i 's/ffmpeg_branding=\\"Chrome\\" \\$//' "$f"
-  sed -i 's/rtc_use_h264=true/rtc_use_h264=false/' "$f"
+  sedi 's/ffmpeg_branding=\\"Chrome\\" \\$//' "$f"
+  sedi 's/rtc_use_h264=true/rtc_use_h264=false/' "$f"
   patch_common "$f"
 }
 
 patch_mac() {
   local f="$1"
-  sed -i 's/rtc_use_h264=true/rtc_use_h264=false/' "$f"
-  sed -i '/rtc_use_h264=false/a\  rtc_objc_prefix=\\"MR\\" \\' "$f"
+  sedi 's/rtc_use_h264=true/rtc_use_h264=false/' "$f"
+  sedi '/rtc_use_h264=false/a\
+  rtc_objc_prefix=\\"MR\\" \\' "$f"
   patch_common "$f"
 }
 
