@@ -33,9 +33,20 @@ FFmpeg inside libwebrtc is **only** used for H.264 decoding. All other codecs us
 | H.264 encode | OpenH264 (bundled) | No |
 | H.264 decode | FFmpeg (bundled) | **Yes** |
 
-With `rtc_use_h264=false`, libwebrtc has zero FFmpeg symbols. LiveKit SFUs negotiate VP8/VP9 by default, and we control the server config. If a remote participant sends H.264, hardware decoders (VideoToolbox on macOS, VA-API on Linux) handle it outside libwebrtc's FFmpeg path.
+### What `rtc_use_h264` controls per platform
 
-On macOS specifically, `rtc_use_h264=false` only removes the OpenH264 software encoder and FFmpeg software decoder. VideoToolbox hardware H.264 is **unconditionally included** regardless of this flag — so there is no practical trade-off on macOS.
+LiveKit's Rust SDK builds set `rtc_use_h264=true` on both Linux and macOS (confirmed at the `webrtc-0001d84-2` tag — the source matches the release). Combined with `ffmpeg_branding="Chrome"` on Linux, this bundles a minimal FFmpeg into `libwebrtc.a`.
+
+Setting `rtc_use_h264=false`:
+
+| Platform | What's removed | What still works |
+|----------|---------------|-----------------|
+| Linux | FFmpeg software H.264 decode + OpenH264 software encode | VA-API hardware decode (if available) |
+| macOS | OpenH264 software encode + FFmpeg software decode | VideoToolbox hardware H.264 encode/decode (**unconditionally included** regardless of this flag) |
+
+**macOS has zero practical trade-off** — VideoToolbox is always present.
+
+**Linux risk is narrow**: if a remote LiveKit participant sends H.264 and the receiving machine has no hardware decoder (e.g. headless server without VA-API), it can't decode that stream. In practice this doesn't affect us — LiveKit SFUs negotiate codecs, VP8/VP9 are the defaults, and we control the server config.
 
 LiveKit's own non-Rust SDK builds already use `rtc_use_h264=false` — the `COMMON_GN_ARGS` in `webrtc-sdk/webrtc-build/run.py` disables H.264 by default. Only the Rust SDK build scripts enable it via `ffmpeg_branding="Chrome"`.
 
