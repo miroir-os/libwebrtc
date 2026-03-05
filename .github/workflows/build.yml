@@ -77,7 +77,14 @@ jobs:
           mkdir -p work
           cp "$LIBWEBRTC_DIR/.gclient" work/.gclient
           cd work
-          bash "../$LIBWEBRTC_DIR/${{ matrix.script }}" --arch "${{ matrix.arch }}" --profile release
+          bash -e "../$LIBWEBRTC_DIR/${{ matrix.script }}" --arch "${{ matrix.arch }}" --profile release
+
+      - name: Verify build output
+        run: |
+          DIR="work/${{ matrix.platform }}-${{ matrix.arch }}-release"
+          test -f "$DIR/lib/libwebrtc.a"
+          test -f "$DIR/webrtc.ninja"
+          test -f "$DIR/desktop_capture.ninja"
 
       - name: Package
         run: |

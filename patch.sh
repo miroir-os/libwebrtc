@@ -43,9 +43,11 @@ patch_linux() {
 
 patch_mac() {
   local f="$1"
-  sedi 's/rtc_use_h264=true/rtc_use_h264=false/' "$f"
-  sedi '/rtc_use_h264=false/a\
-  rtc_objc_prefix=\\"MR\\" \\' "$f"
+  # Use s/// with embedded newline instead of a\ — POSIX defines \\ in s// replacement
+  # but leaves it undefined in a\ text, causing macOS 15 BSD sed to emit a literal \\
+  # that breaks bash line continuation inside the gn gen --args="..." string.
+  sedi 's/rtc_use_h264=true \\/rtc_use_h264=false \\\
+  rtc_objc_prefix=\\"MR\\" \\/' "$f"
   patch_common "$f"
 }
 
