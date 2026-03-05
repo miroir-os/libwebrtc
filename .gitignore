@@ -1,3 +1,6 @@
 .cipd
 .claude
 CLAUDE.md
+src/
+depot_tools/
+*.zip

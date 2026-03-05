@@ -1,0 +1,135 @@
+name: Build libwebrtc
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "webrtc-*"
+
+env:
+  LIVEKIT_TAG: "webrtc-0001d84-2"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            arch: x64
+            runner: ubuntu-latest
+            script: build_linux.sh
+          - platform: mac
+            arch: x64
+            runner: macos-13
+            script: build_macos.sh
+          - platform: mac
+            arch: arm64
+            runner: macos-latest
+            script: build_macos.sh
+
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone livekit/rust-sdks (sparse)
+        run: |
+          git clone --depth 1 --branch "$LIVEKIT_TAG" --filter=blob:none --sparse \
+            https://github.com/livekit/rust-sdks.git rust-sdks
+          cd rust-sdks
+          git sparse-checkout set webrtc-sys/libwebrtc
+
+      - name: Install deps (Ubuntu)
+        if: matrix.platform == 'linux'
+        run: |
+          sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config gcc-14 g++-14
+          pip3 install setuptools
+
+      - name: Install deps (macOS)
+        if: matrix.platform == 'mac'
+        run: brew install ninja
+
+      - name: Free disk space (Ubuntu)
+        if: matrix.platform == 'linux'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
+
+      - name: Apply patches
+        run: |
+          chmod +x patch.sh
+          ./patch.sh "${{ matrix.platform }}" "rust-sdks/webrtc-sys/libwebrtc/${{ matrix.script }}"
+
+      - name: Build
+        run: |
+          LIBWEBRTC_DIR="rust-sdks/webrtc-sys/libwebrtc"
+          mkdir -p work
+          cp "$LIBWEBRTC_DIR/.gclient" work/.gclient
+          cd work
+          bash "../$LIBWEBRTC_DIR/${{ matrix.script }}" --arch "${{ matrix.arch }}" --profile release
+
+      - name: Package
+        run: |
+          ARTIFACT="webrtc-${{ matrix.platform }}-${{ matrix.arch }}-release"
+          cd work
+          mv "${{ matrix.platform }}-${{ matrix.arch }}-release" "$ARTIFACT"
+          zip -r "../${ARTIFACT}.zip" "$ARTIFACT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webrtc-${{ matrix.platform }}-${{ matrix.arch }}-release
+          path: "webrtc-${{ matrix.platform }}-${{ matrix.arch }}-release.zip"
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+            echo "draft=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ env.LIVEKIT_TAG }}" >> "$GITHUB_OUTPUT"
+            echo "draft=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          DRAFT="${{ steps.tag.outputs.draft }}"
+
+          DRAFT_FLAG=""
+          if [[ "$DRAFT" == "true" ]]; then
+            DRAFT_FLAG="--draft"
+          fi
+
+          gh release create "$TAG" $DRAFT_FLAG \
+            --repo "${{ github.repository }}" \
+            --title "$TAG" \
+            --generate-notes \
+            artifacts/*.zip

@@ -1,46 +1,37 @@
-# Libwebrtc patch
-This patches and build the [libwebrtc](https://github.com/livekit/rust-sdks/tree/main/webrtc-sys/libwebrtc) for Livekit.
-It removes the statically linked FFmpeg and use the host one at runtime instead.
+# MiroirOS libwebrtc
 
-## Prerequisites
-- Linux: libavcodec-dev libavformat-dev libavutil-dev
-- MacOS: FFmpeg from Homebrew or MacPorts
+Builds custom libwebrtc from [LiveKit's rust-sdks](https://github.com/livekit/rust-sdks) with MiroirOS patches applied.
 
-## Usage
-### Build
-This patch is meant to be run from the same platform you are building for.
+Pinned LiveKit tag: `webrtc-0001d84-2` (webrtc-sys-build 0.3.13, livekit 0.7.32)
 
-Make sure you cloned this repository with `--recurse-submodules`, or synchronize with:
-```sh
-git submodule init
-git submodule update --recursive
+3 patches are applied on top of upstream LiveKit build scripts — see [PATCHES.md](PATCHES.md) for detailed conflict analysis and justification.
+
+## CI workflow
+
+Based on [LiveKit's webrtc-builds.yml](https://github.com/livekit/rust-sdks/blob/main/.github/workflows/webrtc-builds.yml). Uses [`jlumbroso/free-disk-space`](https://github.com/jlumbroso/free-disk-space) on Ubuntu runners because `gclient sync` downloads ~20GB of Chromium sources and the build itself produces ~15GB of output, exceeding the default runner disk.
+
+## Triggering a build
+
+- **Tag push**: push a tag matching `webrtc-*` to create a published release
+- **Manual**: trigger the `build` workflow via `workflow_dispatch` (creates a draft release)
+
+## Local build
+
+Requires ~40GB disk, `ninja`, `python3`, and GCC 14 (linux) or Xcode (macOS).
+
+```bash
+# Clone LiveKit's rust-sdks at the pinned tag (sparse checkout)
+git clone --depth 1 --branch webrtc-0001d84-2 --filter=blob:none --sparse \
+  https://github.com/livekit/rust-sdks.git rust-sdks
+cd rust-sdks && git sparse-checkout set webrtc-sys/libwebrtc && cd ..
+
+# Apply patches
+./patch.sh linux rust-sdks/webrtc-sys/libwebrtc/build_linux.sh   # or mac / build_macos.sh
+
+# Set up working directory and build (~40min)
+mkdir -p work && cp rust-sdks/webrtc-sys/libwebrtc/.gclient work/
+cd work
+bash ../rust-sdks/webrtc-sys/libwebrtc/build_linux.sh --arch x64 --profile release
 ```
 
-Then build:
-```sh
-# Linux
-./build.sh --platform linux --arch x64 --profile release
-
-# MacOS
-./build.sh --platform macos --arch arm64 --profile release
-```
-
-### Release
-To use the built library in [one-click-os](https://github.com/one-click-studio/one-click-os):
-- Zip the output folder  
-  Ex: on Linux the whole `rust-sdks/webrtc-sys/libwebrtc/linux-x64-release/` folder  
-  (on MacOS get rid of the *__MACOSX* subfolder it creates in the zip)
-- Host this update version on a public URL (ex: Backblaze)
-- If changed, update the URL in `one-click-os/patches/libwebrtc.sh`
-
-## Details
-`build.sh`
-- Patches the build scripts to remove old ffmpeg arguments
-- Add a call to the patch_system_ffmpeg.sh script to be run during build
-
-`verify_build.sh`
-- Check after a build if the patch was correclty applied to the source code
-- Verifies that the resulting library does not contain FFmpeg anymore
-
-## TODO
-- `verify_build.sh` is AI generated and not really tested
+Output lands in `work/linux-x64-release/` (or `mac-{arch}-release/`), ready to use as `LK_CUSTOM_WEBRTC`.
