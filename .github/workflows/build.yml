@@ -7,7 +7,15 @@ on:
       - "webrtc-*"
 
 env:
-  LIVEKIT_TAG: "webrtc-0001d84-2"
+  # The livekit/rust-sdks tag whose build scripts we use. In practice this is
+  # a `webrtc-*` release tag from https://github.com/livekit/rust-sdks/releases,
+  # chosen to match the webrtc-sys version this libwebrtc will be paired with.
+  RUST_SDKS_TAG: "webrtc-51ef663"
+
+  # Full 40-char webrtc-sdk/webrtc commit SHA baked into libwebrtc.a. Pin to
+  # the same commit LK built RUST_SDKS_TAG against so our build matches LK's
+  # tested combination exactly. See README.md for how to find this commit.
+  WEBRTC_COMMIT: "aaeeee8077eb0a4cad1c9494e9c6433c751ef663"
 
 jobs:
   build:
@@ -37,7 +45,7 @@ jobs:
 
       - name: Clone livekit/rust-sdks (sparse)
         run: |
-          git clone --depth 1 --branch "$LIVEKIT_TAG" --filter=blob:none --sparse \
+          git clone --depth 1 --branch "$RUST_SDKS_TAG" --filter=blob:none --sparse \
             https://github.com/livekit/rust-sdks.git rust-sdks
           cd rust-sdks
           git sparse-checkout set webrtc-sys/libwebrtc
@@ -119,7 +127,7 @@ jobs:
             echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
             echo "draft=false" >> "$GITHUB_OUTPUT"
           else
-            echo "tag=${{ env.LIVEKIT_TAG }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ env.RUST_SDKS_TAG }}" >> "$GITHUB_OUTPUT"
             echo "draft=true" >> "$GITHUB_OUTPUT"
           fi
 

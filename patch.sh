@@ -32,6 +32,16 @@ patch_common() {
   # Exclude protobuf .o files from the ar step — despite rtc_enable_protobuf=false,
   # protobuf-lite objects still get compiled as transitive deps (perfetto/trace).
   sedi 's|-not -path "\*/third_party/nasm/\*"|-not -path "*/third_party/nasm/*" -not -path "*/third_party/protobuf/*"|' "$f"
+
+  # Pin webrtc-sdk to WEBRTC_COMMIT. The .gclient from LK points to a moving
+  # release branch (@mXXX_release); rewriting to @<sha> makes gclient sync
+  # resolve deterministically across CI runs.
+  if [ -z "${WEBRTC_COMMIT:-}" ]; then
+    echo "Error: WEBRTC_COMMIT env var must be set" >&2
+    exit 1
+  fi
+  sedi "s|webrtc-sdk/webrtc.git@m[0-9][0-9]*_release|webrtc-sdk/webrtc.git@${WEBRTC_COMMIT}|" \
+    "$(dirname "$f")/.gclient"
 }
 
 patch_linux() {
