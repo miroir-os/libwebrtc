@@ -8,7 +8,7 @@ The compositor links **LiveKit** (which statically bundles Google's libwebrtc) a
 |---|----------|-----------|-----|--------|
 | 1 | FFmpeg symbols | linux, macOS | `rtc_use_h264=false` | Our patch |
 | 2 | ObjC classes | macOS | `rtc_objc_prefix="MR"` | Our patch |
-| 3 | Protobuf symbols | linux, macOS | Exclude from ar step | Our patch |
+| 3 | Protobuf symbols | linux, macOS | None since `ort` left MiroirOS | — |
 | 4 | BoringSSL symbols | linux | `objcopy --redefine-syms` | Upstream LiveKit |
 
 ## Why monoliths clash
@@ -89,29 +89,13 @@ All standard linker tricks fail for ObjC classes:
 | `llvm-objcopy --redefine-sym` | Renames symbol table entry but not `__objc_classname`/`__objc_classlist` metadata sections |
 | Disable WebRTC in CEF | `enable_webrtc=false` GN flag no longer exists in modern Chromium |
 
-`rtc_objc_prefix` is the only solution that works at the ObjC runtime level.
+`rtc_objc_prefix` is the only solution that works at the ObjC runtime level.## Conflict 3: Protobuf duplicate symbols (resolved)
 
-## Conflict 3: Protobuf duplicate symbols (linux + macOS)
+ONNX Runtime (via `ort-sys`) statically bundled protobuf-lite, as libwebrtc does (protobuf-lite objects get compiled as transitive deps of perfetto/trace despite `rtc_enable_protobuf=false`), and the two clashed at link time with ~128 duplicate `google::protobuf::*` symbols. Builds up to `webrtc-51ef663` excluded `third_party/protobuf` from the archive step.
 
-**Patch**: Exclude `third_party/protobuf` from ar archive step
+MiroirOS dropped `ort` for `burn` (miroir-os#834): nothing else links C++ protobuf, so later builds keep LiveKit's archive step as is.
 
-ONNX Runtime (via `ort-sys`) statically bundles protobuf-lite. libwebrtc also compiles protobuf objects. When both are in the same binary, ~128 duplicate `google::protobuf::*` symbols cause linker errors:
 
-```
-rust-lld: error: duplicate symbol: google::protobuf::internal::ArenaStringPtr::Destroy()
->>> defined at arenastring.o in libwebrtc_sys-*.rlib
->>> defined at arenastring.cc.o in libort_sys-*.rlib
-```
-
-LiveKit's build scripts already set `rtc_enable_protobuf=false`, which replaces WebRTC's own protobuf usage with lightweight hand-written serializers. However, **this is necessary but not sufficient** — protobuf-lite `.o` files still get compiled as transitive deps of perfetto/trace and swept into `libwebrtc.a` by the `find | ar` aggregation step.
-
-This is a known problem. The established solution is to blacklist protobuf objects at archive time — both [sourcey/webrtc-builds](https://github.com/sourcey/webrtc-builds/blob/master/util.sh) and [vsimon/webrtcbuilds](https://github.com/vsimon/webrtcbuilds/blob/master/util.sh) maintain an explicit blacklist that filters out `protobuf_lite` objects before archiving. For LiveKit's build scripts, the equivalent is adding a `-not -path "*/third_party/protobuf/*"` exclusion to the `find` command.
-
-### Alternatives considered
-
-- **Switch `ort` to dynamic linking** (`features = ["load-dynamic"]`): loads `libonnxruntime.so` at runtime via `dlopen`, removing `ort-sys` from the link step entirely. Eliminates the conflict regardless of libwebrtc state. Trade-off: requires shipping `libonnxruntime.so` separately. This is the [recommended approach by ort documentation](https://ort.pyke.io/setup/linking) for production and provides defense-in-depth alongside the archive exclusion.
-- **Symbol localization** (`objcopy --localize-symbols`): same technique LiveKit uses for BoringSSL (`LK_` prefix), but C++ mangled protobuf symbols are far harder to target than BoringSSL's C symbols. Fragile and breaks on every version bump.
-- **Source-level namespace rename** (`sed -i 's/namespace google/namespace lk_google/g'`): extremely invasive, also requires renaming `.proto` files themselves (ONNX [discovered this](https://github.com/onnx/onnx/pull/555)). Protobuf upstream has an open [feature request](https://github.com/protocolbuffers/protobuf/issues/4004) for a `--namespace` flag but it remains unimplemented.
 
 ## Conflict 4: BoringSSL vs OpenSSL (linux)
 
@@ -143,14 +127,14 @@ No issues exist for FFmpeg symbol conflicts or ObjC class conflicts specifically
 
 Other notable projects: [Shiguredo](https://github.com/shiguredo-webrtc-build/webrtc-build) excludes H.264 from all builds (same as our approach). [Threema](https://github.com/threema-ch/webrtc-android) disables protobuf. [Intermedia](https://github.com/intermedia-net/jpkgchanger) renames Java packages on Android (the equivalent of `rtc_objc_prefix` for Android).
 
-## `LK_CUSTOM_WEBRTC` integration
+## Consuming a release
 
-The custom `libwebrtc.a` is consumed via `LK_CUSTOM_WEBRTC` (set in `.cargo/config.toml`). The directory must contain `lib/libwebrtc.a`, `include/`, `webrtc.ninja`, and `desktop_capture.ninja`. The build system parses the first line of `webrtc.ninja` to extract all `-D` preprocessor flags via regex — these defines must exactly match what the CXX bridge expects, or you get ABI mismatches. Only LiveKit's build scripts produce this format.
+Each release holds `webrtc-{platform}-{arch}-release.zip` archives in LiveKit's layout, so `webrtc-sys` downloads one in place of LiveKit's own when `LK_WEBRTC_RELEASE` (set in `.cargo/config.toml`) names the release's download URL. The unpacked directory, which `LK_CUSTOM_WEBRTC` can also name, must contain `lib/libwebrtc.a`, `include/`, `webrtc.ninja`, and `desktop_capture.ninja`. The build system parses the first line of `webrtc.ninja` to extract all `-D` preprocessor flags via regex — these defines must exactly match what the CXX bridge expects, or you get ABI mismatches. Only LiveKit's build scripts produce this format.
 
 ## Why we can't use third-party builds
 
 The `webrtc-sys` CXX bridge requires LiveKit-specific APIs (frame cryptor, SSL verification callback, custom sources) that only exist in `webrtc-sdk/webrtc` — not in upstream `webrtc.googlesource.com`. Every external project (Shiguredo, stasel, Jitsi, Threema, Signal/ringrtc) builds from upstream and is incompatible.
 
-Among forks of LiveKit's build, [gethopp/rust-sdks](https://github.com/gethopp/rust-sdks) is closest (publishes full multi-platform binaries in `LK_CUSTOM_WEBRTC` format), but their builds still bundle FFmpeg and don't set `rtc_objc_prefix`. No existing fork applies all three of our patches.
+Among forks of LiveKit's build, [gethopp/rust-sdks](https://github.com/gethopp/rust-sdks) is closest (publishes full multi-platform binaries in `LK_CUSTOM_WEBRTC` format), but their builds still bundle FFmpeg and don't set `rtc_objc_prefix`. No existing fork applies both of our patches.
 
 See the full analysis in [one-click-os/rfcs/temp/libwebrtc.md](https://github.com/miroir-os/one-click-os/blob/v2-main/rfcs/temp/libwebrtc.md).

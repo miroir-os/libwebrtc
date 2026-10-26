@@ -29,10 +29,6 @@ sedi() {
 
 patch_common() {
   local f="$1"
-  # Exclude protobuf .o files from the ar step — despite rtc_enable_protobuf=false,
-  # protobuf-lite objects still get compiled as transitive deps (perfetto/trace).
-  sedi 's|-not -path "\*/third_party/nasm/\*"|-not -path "*/third_party/nasm/*" -not -path "*/third_party/protobuf/*"|' "$f"
-
   # Pin webrtc-sdk to WEBRTC_COMMIT. The .gclient from LK points to a moving
   # release branch (@mXXX_release); rewriting to @<sha> makes gclient sync
   # resolve deterministically across CI runs.

@@ -94,12 +94,12 @@ jobs:
           test -f "$DIR/webrtc.ninja"
           test -f "$DIR/desktop_capture.ninja"
 
+      # LiveKit's layout, `{platform}-{arch}-release/` at the archive's root: webrtc-sys downloads
+      # and unpacks ours as it does theirs.
       - name: Package
         run: |
-          ARTIFACT="webrtc-${{ matrix.platform }}-${{ matrix.arch }}-release"
           cd work
-          mv "${{ matrix.platform }}-${{ matrix.arch }}-release" "$ARTIFACT"
-          zip -r "../${ARTIFACT}.zip" "$ARTIFACT"
+          zip -r "../webrtc-${{ matrix.platform }}-${{ matrix.arch }}-release.zip" "${{ matrix.platform }}-${{ matrix.arch }}-release"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -11,7 +11,7 @@ Two inputs control the build, set in [`.github/workflows/build.yml`](.github/wor
 | `RUST_SDKS_TAG` | The `livekit/rust-sdks` tag whose build scripts we use. Determines `build_*.sh`, patch files, GN args layout, and the webrtc-sys CXX bridge ABI this libwebrtc will be paired with. Pick a `webrtc-*` release tag from [LK's releases](https://github.com/livekit/rust-sdks/releases). |
 | `WEBRTC_COMMIT` | Full 40-char `webrtc-sdk/webrtc` commit SHA baked into `libwebrtc.a`. Decides the C++ source we compile. Pin to the same commit LK built `RUST_SDKS_TAG` against so our build matches LK's tested combination. |
 
-4 patches are applied on top of upstream LiveKit build scripts — see [PATCHES.md](PATCHES.md) for detailed conflict analysis and justification.
+2 patches are applied on top of upstream LiveKit build scripts — see [PATCHES.md](PATCHES.md) for detailed conflict analysis and justification.
 
 ## CI workflow
 
@@ -19,7 +19,9 @@ Based on [LiveKit's webrtc-builds.yml](https://github.com/livekit/rust-sdks/blob
 
 ## Triggering a build
 
-- **Tag push**: push a tag matching `webrtc-*` to create a published release. By convention the tag matches `RUST_SDKS_TAG` (e.g., our `webrtc-51ef663` mirrors LK's `webrtc-51ef663`), so an LK release and our matching build can be correlated by name.
+- **Tag push**: push a tag matching `webrtc-*` to create a published release. By convention the tag matches `RUST_SDKS_TAG` (e.g., our `webrtc-51ef663` mirrors LK's `webrtc-51ef663`), so an LK release and our matching build can be correlated by name; a rebuild of the same one gets a `-N` suffix (`webrtc-51ef663-2`).
+
+A consumer points `LK_WEBRTC_RELEASE` at a release's download URL (`https://github.com/miroir-os/libwebrtc/releases/download/<tag>`), and `webrtc-sys` downloads the archive for its platform from there.
 - **Manual**: trigger the `build` workflow via `workflow_dispatch` (creates a draft release).
 
 ## Updating to a new LiveKit release
