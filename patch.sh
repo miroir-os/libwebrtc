@@ -41,19 +41,13 @@ patch_common() {
 }
 
 patch_linux() {
-  local f="$1"
-  sedi 's/ffmpeg_branding=\\"Chrome\\" \\$//' "$f"
-  sedi 's/rtc_use_h264=true/rtc_use_h264=false/' "$f"
-  patch_common "$f"
+  patch_common "$1"
 }
 
 patch_mac() {
   local f="$1"
-  # Use s/// with embedded newline instead of a\ — POSIX defines \\ in s// replacement
-  # but leaves it undefined in a\ text, causing macOS 15 BSD sed to emit a literal \\
-  # that breaks bash line continuation inside the gn gen --args="..." string.
-  sedi 's/rtc_use_h264=true \\/rtc_use_h264=false \\\
-  rtc_objc_prefix=\\"MR\\" \\/' "$f"
+  # Prefixes the bundled FFmpeg's symbols as build_linux.sh does: the change proposed upstream, see PATCHES.md.
+  patch --forward "$f" < "$(dirname "$0")/patches/build_macos-ffmpeg-prefix.patch"
   patch_common "$f"
 }
 
