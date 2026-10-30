@@ -5,7 +5,7 @@ The MiroirOS compositor links libwebrtc, through LiveKit's `webrtc-sys`, into on
 | Conflict | Platforms | Fix |
 |---|---|---|
 | FFmpeg symbols | linux | `LK_` prefix, in LiveKit's builds since `webrtc-a545de4` ([livekit/rust-sdks#1534](https://github.com/livekit/rust-sdks/pull/1534)) |
-| FFmpeg symbols | macOS | The same prefix: [`patches/build_macos-ffmpeg-prefix.patch`](patches/build_macos-ffmpeg-prefix.patch), proposed upstream as [livekit/rust-sdks#UPSTREAM_PR](https://github.com/livekit/rust-sdks/pull/UPSTREAM_PR) |
+| FFmpeg symbols | macOS | The same prefix: [`patches/build_macos-ffmpeg-prefix.patch`](patches/build_macos-ffmpeg-prefix.patch), proposed upstream as [livekit/rust-sdks#1608](https://github.com/livekit/rust-sdks/pull/1608) |
 | BoringSSL symbols | linux | `LK_` prefix, in LiveKit's builds |
 | ObjC classes | macOS | None needed |
 
